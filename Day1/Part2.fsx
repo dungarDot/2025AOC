@@ -18,64 +18,45 @@ module Operation =
 
 type Dial = {
     Position: decimal
-    Adjust: decimal
-    AdjustZerosPassed: int
-    NumberOf0s : int
+    ZerosPassed : int
 }
 
 module Dial =
     let Create() = 
         {   Position = 50m
-            Adjust = 0m
-            AdjustZerosPassed = 0
-            NumberOf0s = 0 }
-    // Process:
-    // 1. Move dial according to operation
-    // 2. if dial = 100 then set to 0
-    // 3. Check how many 0's were passed during the move
-    // 4. Update total 0's hit
-    let PositionAdjust dial  =
-        printfn "Adjusting position for %M" dial.Position
-        match dial.Position >= 100m, dial.Position <= 0m with
-        | true, _ -> 
-            let position = if dial.Position = 100m then 0m else dial.Position
-            let zeroesPassed = Math.Floor (position / 100m)
-            let adjust = zeroesPassed * 100m
-            let finalPosition = if position - adjust = 100m then 0m else position - adjust
-            printfn "Wrapping around from %M with %M to get %M with an additional %d" dial.Position adjust finalPosition (int zeroesPassed)
-            { dial with Position = finalPosition; AdjustZerosPassed = int zeroesPassed }
-        | _, true -> 
-            let zeroStart = if dial.Position = 0m then -1m else 0m
-            let zeroesPassed = Math.Floor (dial.Position / 100m) * -1m + zeroStart
-            let adjust = zeroesPassed * 100m
-            let finalPosition = if dial.Position + adjust = 100m then 0m else dial.Position + adjust
-            printfn "Wrapping around from %M with %M to get %M with an additional %d" dial.Position adjust finalPosition (int zeroesPassed)
-            { dial with Position = finalPosition; AdjustZerosPassed = int zeroesPassed }
-        | _ -> 
-            printfn "No wrap needed for %M" dial.Position
-            {dial with AdjustZerosPassed = 0 }
+            ZerosPassed = 0 }
 
-    let ZeroCheck dial = 
-        if dial.Position = 0m then 
-            printfn "Zero landed on, count at %d" (dial.NumberOf0s + 1)
-            { dial with NumberOf0s = dial.NumberOf0s + 1 + dial.AdjustZerosPassed; AdjustZerosPassed = 0 }
+    let newPositionAdjust dial spinValue =
+        let startingZeroAdjust = if dial.Position = 0m then -1 else 0
+        let newPosition = if dial.Position + spinValue = 100m then 0m else dial.Position + spinValue
+        match newPosition > 100m, newPosition < 0m with
+        | true, _ ->
+            let adjustAmount = Math.Floor (newPosition / 100m) * 100m
+            let finalPosition = if newPosition - adjustAmount = 100m then 0m else newPosition - adjustAmount
+            let finalZero = if finalPosition = 0m then 1 else 0
+            let adjustPassedZeros = int (adjustAmount / 100m)
+            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | AdjustAmount: {adjustAmount} | NewPosition: {newPosition} | FinalPosition: {finalPosition} | AdjustPassedZeros: {adjustPassedZeros} | StartingZeroAdjust: {startingZeroAdjust} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero}"
+            { dial with Position = finalPosition; ZerosPassed = dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero }
+        | _, true ->
+            let adjustAmount = Math.Floor (newPosition / 100m) * -100m
+            let finalPosition = if newPosition + adjustAmount = 100m then 0m else newPosition + adjustAmount
+            let finalZero = if finalPosition = 0m then 1 else 0
+            let adjustPassedZeros = int (adjustAmount / 100m)
+            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | AdjustAmount: {adjustAmount} | NewPosition: {newPosition} | FinalPosition: {finalPosition} | AdjustPassedZeros: {adjustPassedZeros} | StartingZeroAdjust: {startingZeroAdjust} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero}"
+            { dial with Position = finalPosition; ZerosPassed = dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero }
             
-        else
-            printfn "No zero landed on. Passed %d zeros for a total of %d" dial.AdjustZerosPassed (dial.NumberOf0s + dial.AdjustZerosPassed)
-            { dial with NumberOf0s = dial.NumberOf0s + dial.AdjustZerosPassed; AdjustZerosPassed = 0 }
+        | _ ->
+            let finalZero = if newPosition = 0m then 1 else 0
+            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | NewPosition: {newPosition} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + finalZero}"
+            { dial with Position = newPosition; ZerosPassed = dial.ZerosPassed + finalZero }
 
-    let DoTheThing operation dial =
-        match operation with
-        | L value -> 
-            printfn "Doing L %M on %M" value dial.Position
-            { dial with Position = dial.Position - value; Adjust = -value }
-            |> PositionAdjust
-            |> ZeroCheck
-        | R value -> 
-            printfn "Doing R %M on %M" value dial.Position
-            { dial with Position = dial.Position + value; Adjust = value }
-            |> PositionAdjust
-            |> ZeroCheck
+    let Spin dial operation   =
+        let spin =
+            match operation with
+            | L value -> newPositionAdjust dial -value
+            | R value -> newPositionAdjust dial value
+
+        spin
 
 
 
@@ -87,4 +68,4 @@ files
     let direction = line.Substring(0,1)
     let value = decimal (line.Substring 1)
     Operation.Parse(direction, value)) 
-|> Array.fold (fun dial operation -> Dial.DoTheThing operation dial) dial
+|> Array.fold Dial.Spin dial
