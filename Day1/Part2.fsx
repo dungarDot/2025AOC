@@ -89,7 +89,6 @@ module BruteFORCE =
     | R of int
 
     let BruteParse (direction: string, value: int) =
-        // printfn "Parsing operation: %s%d" direction value
         match direction with
         | "L" -> L value
         | "R" -> R value
@@ -124,7 +123,6 @@ module BruteFORCE =
 let bruteDial = BruteFORCE.Create()
 
 files  
-// |> Array.take 10
 |> Array.Parallel.map(fun line -> 
     let direction = line.Substring(0,1)
     let value = decimal (line.Substring 1)
