@@ -26,28 +26,36 @@ module Dial =
         {   Position = 50m
             ZerosPassed = 0 }
 
+    let basicLog dial spinValue newPosition finalZero =
+            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | NewPosition: {newPosition} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + finalZero}"  
+
+    let private complexLog dial spinValue adjustAmount newPosition finalPosition adjustPassedZeros startingZeroAdjust finalZero =
+        printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | AdjustAmount: {adjustAmount} | NewPosition: {newPosition} | FinalPosition: {finalPosition} | AdjustPassedZeros: {adjustPassedZeros} | StartingZeroAdjust: {startingZeroAdjust} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero}"
+
     let newPositionAdjust dial spinValue =
         let startingZeroAdjust = if dial.Position = 0m then -1 else 0
         let newPosition = if dial.Position + spinValue = 100m then 0m else dial.Position + spinValue
+
         match newPosition > 100m, newPosition < 0m with
         | true, _ ->
             let adjustAmount = Math.Floor (newPosition / 100m) * 100m
             let finalPosition = if newPosition - adjustAmount = 100m then 0m else newPosition - adjustAmount
             let finalZero = if finalPosition = 0m then 1 else 0
             let adjustPassedZeros = int (adjustAmount / 100m)
-            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | AdjustAmount: {adjustAmount} | NewPosition: {newPosition} | FinalPosition: {finalPosition} | AdjustPassedZeros: {adjustPassedZeros} | StartingZeroAdjust: {startingZeroAdjust} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero}"
+            complexLog dial spinValue adjustAmount newPosition finalPosition adjustPassedZeros startingZeroAdjust finalZero
             { dial with Position = finalPosition; ZerosPassed = dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero }
+
         | _, true ->
             let adjustAmount = Math.Floor (newPosition / 100m) * -100m
             let finalPosition = if newPosition + adjustAmount = 100m then 0m else newPosition + adjustAmount
             let finalZero = if finalPosition = 0m then 1 else 0
             let adjustPassedZeros = int (adjustAmount / 100m)
-            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | AdjustAmount: {adjustAmount} | NewPosition: {newPosition} | FinalPosition: {finalPosition} | AdjustPassedZeros: {adjustPassedZeros} | StartingZeroAdjust: {startingZeroAdjust} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero}"
+            complexLog dial spinValue adjustAmount newPosition finalPosition adjustPassedZeros startingZeroAdjust finalZero
             { dial with Position = finalPosition; ZerosPassed = dial.ZerosPassed + adjustPassedZeros + startingZeroAdjust + finalZero }
-            
+
         | _ ->
             let finalZero = if newPosition = 0m then 1 else 0
-            printfn $"CurrentZeros: {dial.ZerosPassed} | StartingPosition {dial.Position} | SpinValue: {spinValue} | NewPosition: {newPosition} | FinalZero: {finalZero} | FinalCalc : {dial.ZerosPassed + finalZero}"
+            basicLog dial spinValue newPosition finalZero
             { dial with Position = newPosition; ZerosPassed = dial.ZerosPassed + finalZero }
 
     let Spin dial operation   =
@@ -57,8 +65,6 @@ module Dial =
             | R value -> newPositionAdjust dial value
 
         spin
-
-
 
 let dial = Dial.Create()
 
